@@ -1,0 +1,13 @@
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { ToolArgs } from "../../types.js";
+export declare function handleListChatSpaces(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleGetChatSpace(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleFindChatDirectMessage(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleListChatMessages(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleGetChatMessage(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleSendChatMessage(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleSendChatDirectMessage(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleUpdateChatMessage(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleDeleteChatMessage(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleListChatMembers(args: ToolArgs): Promise<CallToolResult>;
+export declare function handleAddChatReaction(args: ToolArgs): Promise<CallToolResult>;

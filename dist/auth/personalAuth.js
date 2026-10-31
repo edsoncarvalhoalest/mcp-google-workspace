@@ -27,6 +27,11 @@ export const STANDARD_SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/documents.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
+    // Google Chat (user authentication)
+    "https://www.googleapis.com/auth/chat.spaces",
+    "https://www.googleapis.com/auth/chat.messages",
+    "https://www.googleapis.com/auth/chat.memberships",
+    "https://www.googleapis.com/auth/chat.messages.reactions",
 ];
 function uniqueValues(values) {
     return Array.from(new Set(values.filter((value) => Boolean(value))));

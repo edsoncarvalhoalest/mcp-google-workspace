@@ -1,6 +1,7 @@
 import { ensurePersonalAuth, forcePersonalReauth } from "../../auth/personalAuth.js";
 import { AUTH_TOOL_MODULES } from "./google/auth/index.js";
 import { CALENDAR_TOOL_MODULES } from "./google/calendar/index.js";
+import { CHAT_TOOL_MODULES } from "./google/chat/index.js";
 import { DRIVE_TOOL_MODULES } from "./google/drive/index.js";
 import { GMAIL_TOOL_MODULES } from "./google/gmail/index.js";
 import { SHEETS_TOOL_MODULES } from "./google/sheets/index.js";
@@ -26,6 +27,7 @@ const ALL_TOOL_MODULES = [
     ...SHEETS_TOOL_MODULES,
     ...GMAIL_TOOL_MODULES,
     ...CALENDAR_TOOL_MODULES,
+    ...CHAT_TOOL_MODULES,
 ];
 const TOOL_MODULE_MAP = new Map();
 for (const toolModule of ALL_TOOL_MODULES) {

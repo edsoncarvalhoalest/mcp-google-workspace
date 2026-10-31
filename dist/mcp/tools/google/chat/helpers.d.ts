@@ -1,0 +1,51 @@
+import type { chat_v1 } from "googleapis";
+export declare const CHAT_MAX_PAGE_SIZE = 1000;
+export declare function getChatClient(): chat_v1.Chat;
+export declare function setChatClientFactory(factory: () => chat_v1.Chat): void;
+export declare function resetChatClientFactory(): void;
+export declare function normalizeSpaceName(value: string): string;
+export declare function normalizeMessageName(value: string, space?: string): string;
+export declare function normalizeUserName(value: string): string;
+export declare function clampPageSize(value: number, max?: number): number;
+export type ChatUserSummary = {
+    name: string;
+    displayName: string;
+    type: string;
+};
+export type ChatSpaceSummary = {
+    name: string;
+    displayName: string;
+    spaceType: string;
+    singleUserBotDm: boolean;
+    spaceThreadingState: string;
+    createTime: string;
+    lastActiveTime: string;
+    spaceUri: string;
+    description: string;
+    membershipCount?: number;
+};
+export type ChatMessageSummary = {
+    name: string;
+    text: string;
+    sender: ChatUserSummary;
+    createTime: string;
+    lastUpdateTime: string;
+    deleteTime: string;
+    threadName: string;
+    threadReply: boolean;
+    spaceName: string;
+    attachmentCount: number;
+};
+export type ChatMemberSummary = {
+    name: string;
+    state: string;
+    role: string;
+    createTime: string;
+    member?: ChatUserSummary;
+    groupMember?: string;
+};
+export declare function mapChatSpace(space: chat_v1.Schema$Space | undefined): ChatSpaceSummary;
+export declare function mapChatUser(user: chat_v1.Schema$User | undefined): ChatUserSummary;
+export declare function mapChatMessage(message: chat_v1.Schema$Message | undefined): ChatMessageSummary;
+export declare function mapChatMember(membership: chat_v1.Schema$Membership | undefined): ChatMemberSummary;
+export declare function getHttpStatus(error: unknown): number | undefined;
