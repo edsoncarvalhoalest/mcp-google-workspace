@@ -1,0 +1,10 @@
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+export declare const LIST_UPCOMING_EVENTS_TOOL_DEFINITION: Tool;
+export declare const SEARCH_CALENDAR_EVENTS_TOOL_DEFINITION: Tool;
+export declare const LIST_CALENDARS_TOOL_DEFINITION: Tool;
+export declare const CHECK_FREE_BUSY_TOOL_DEFINITION: Tool;
+export declare const GET_CALENDAR_EVENT_TOOL_DEFINITION: Tool;
+export declare const CREATE_CALENDAR_EVENT_TOOL_DEFINITION: Tool;
+export declare const UPDATE_CALENDAR_EVENT_TOOL_DEFINITION: Tool;
+export declare const DELETE_EVENTS_IN_RANGE_TOOL_DEFINITION: Tool;
+export declare const DELETE_CALENDAR_EVENT_TOOL_DEFINITION: Tool;

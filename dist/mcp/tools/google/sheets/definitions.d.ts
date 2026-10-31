@@ -1,0 +1,11 @@
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+export declare const CREATE_SPREADSHEET_TOOL_DEFINITION: Tool;
+export declare const ADD_WORKSHEET_TOOL_DEFINITION: Tool;
+export declare const READ_SHEET_DATA_TOOL_DEFINITION: Tool;
+export declare const WRITE_SHEET_DATA_TOOL_DEFINITION: Tool;
+export declare const APPEND_SHEET_DATA_TOOL_DEFINITION: Tool;
+export declare const SMART_SHEET_STYLER_TOOL_DEFINITION: Tool;
+export declare const INJECT_DATA_CHART_TOOL_DEFINITION: Tool;
+export declare const CREATE_DROPDOWN_FILTER_TOOL_DEFINITION: Tool;
+export declare const OBSERVE_SPREADSHEET_CONTEXT_TOOL_DEFINITION: Tool;
+export declare const DIAGNOSE_SHEET_EXECUTION_TOOL_DEFINITION: Tool;

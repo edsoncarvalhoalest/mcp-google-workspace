@@ -1,0 +1,10 @@
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+export declare const SEARCH_EMAILS_TOOL_DEFINITION: Tool;
+export declare const GET_EMAIL_TOOL_DEFINITION: Tool;
+export declare const SEND_EMAIL_TOOL_DEFINITION: Tool;
+export declare const CREATE_EMAIL_DRAFT_TOOL_DEFINITION: Tool;
+export declare const REPLY_EMAIL_TOOL_DEFINITION: Tool;
+export declare const MODIFY_EMAIL_LABELS_TOOL_DEFINITION: Tool;
+export declare const START_GMAIL_WATCH_TOOL_DEFINITION: Tool;
+export declare const STOP_GMAIL_WATCH_TOOL_DEFINITION: Tool;
+export declare const LIST_GMAIL_HISTORY_TOOL_DEFINITION: Tool;

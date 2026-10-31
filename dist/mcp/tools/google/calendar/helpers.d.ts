@@ -1,0 +1,36 @@
+import type { calendar_v3 } from "googleapis";
+export declare function getCalendarClient(): calendar_v3.Calendar;
+export declare const DISPLAY_TIME_ZONE = "Asia/Ho_Chi_Minh";
+export type CalendarEventSummary = {
+    id: string;
+    etag: string;
+    summary: string;
+    description: string;
+    location: string;
+    start: string;
+    end: string;
+    startLocal: string;
+    endLocal: string;
+    htmlLink: string;
+    meetLink: string;
+    status: string;
+};
+export declare function formatInDisplayZone(value: string): string;
+export declare function mapCalendarEvent(event: calendar_v3.Schema$Event): CalendarEventSummary;
+export type CalendarListEntrySummary = {
+    id: string;
+    summary: string;
+    description: string;
+    primary: boolean;
+    accessRole: string;
+    selected: boolean;
+    hidden: boolean;
+    backgroundColor: string;
+    foregroundColor: string;
+    timeZone: string;
+    location: string;
+};
+export declare function mapCalendarListEntry(entry: calendar_v3.Schema$CalendarListEntry): CalendarListEntrySummary;
+export declare function getHttpStatus(error: unknown): number | undefined;
+export declare function ifMatchHeaders(etag: string): Record<string, string>;
+export declare function ifNoneMatchHeaders(etag: string): Record<string, string>;
