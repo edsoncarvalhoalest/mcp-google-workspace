@@ -7,4 +7,6 @@ export type ToolModule = {
     definition: Tool;
     handler: ToolHandler;
     authMode?: AuthMode;
+    /** Scopes checked before the handler runs; defaults to SERVICE_SCOPES[owner]. */
+    requiredScopes?: string[];
 };

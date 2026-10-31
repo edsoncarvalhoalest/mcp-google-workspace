@@ -299,3 +299,18 @@ test("invalid arguments produce isError without calling the API", async () => {
     assert.match(textOf(result), /text/);
     assert.equal(chat.calls.length, 0);
 });
+
+test("Chat tools carry MCP read-only/destructive annotations", () => {
+    const byName = new Map(registry.REGISTERED_TOOL_DEFINITIONS.map((definition) => [definition.name, definition]));
+    for (const name of ["list_chat_spaces", "get_chat_space", "find_chat_direct_message", "list_chat_messages", "get_chat_message", "list_chat_members"]) {
+        assert.equal(byName.get(name).annotations?.readOnlyHint, true, `${name} should be read-only`);
+    }
+    for (const name of ["update_chat_message", "delete_chat_message"]) {
+        assert.equal(byName.get(name).annotations?.destructiveHint, true, `${name} should be destructive`);
+    }
+    for (const name of ["send_chat_message", "send_chat_direct_message", "add_chat_reaction"]) {
+        const annotations = byName.get(name).annotations;
+        assert.equal(annotations?.readOnlyHint, false, `${name} writes`);
+        assert.equal(annotations?.destructiveHint, false, `${name} is additive`);
+    }
+});

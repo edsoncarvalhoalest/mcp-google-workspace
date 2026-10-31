@@ -1,4 +1,4 @@
-import { ensurePersonalAuth, forcePersonalReauth } from "../../auth/personalAuth.js";
+import { ensurePersonalAuth, forcePersonalReauth, SERVICE_SCOPES, STANDARD_SCOPES } from "../../auth/personalAuth.js";
 import { AUTH_TOOL_MODULES } from "./google/auth/index.js";
 import { CALENDAR_TOOL_MODULES } from "./google/calendar/index.js";
 import { CHAT_TOOL_MODULES } from "./google/chat/index.js";
@@ -39,12 +39,16 @@ for (const toolModule of ALL_TOOL_MODULES) {
 }
 export const REGISTERED_TOOL_DEFINITIONS = ALL_TOOL_MODULES.map((toolModule) => toolModule.definition);
 export const REGISTERED_TOOL_NAMES = new Set(TOOL_MODULE_MAP.keys());
+/** Scopes checked before a personal tool runs: per-module override, else per owner. */
+export function resolveRequiredScopes(toolModule) {
+    return toolModule.requiredScopes ?? SERVICE_SCOPES[toolModule.owner] ?? STANDARD_SCOPES;
+}
 async function executeToolModule(toolModule, args) {
     const authMode = toolModule.authMode ?? "personal";
     if (authMode === "none") {
         return toolModule.handler(args);
     }
-    await ensurePersonalAuth();
+    await ensurePersonalAuth(resolveRequiredScopes(toolModule));
     let result = await toolModule.handler(args);
     if (result.isError && isAuthErrorText(extractText(result))) {
         await forcePersonalReauth();

@@ -10,8 +10,13 @@ const PAGE_TOKEN_PROPERTY = {
     type: "string",
     description: "Page token returned as nextPageToken by a previous call.",
 };
+// MCP tool annotations so clients can gate actions taken as the signed-in user.
+const READ_ONLY_ANNOTATIONS = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+const WRITE_ANNOTATIONS = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true };
+const DESTRUCTIVE_ANNOTATIONS = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true };
 export const LIST_CHAT_SPACES_TOOL_DEFINITION = {
     name: "list_chat_spaces",
+    annotations: { title: "List Chat spaces", ...READ_ONLY_ANNOTATIONS },
     description: "List Google Chat spaces (named spaces, group chats and direct messages) the signed-in user is a member of. Returns resource names like 'spaces/AAAAxxxx'.",
     inputSchema: {
         type: "object",
@@ -27,6 +32,7 @@ export const LIST_CHAT_SPACES_TOOL_DEFINITION = {
 };
 export const GET_CHAT_SPACE_TOOL_DEFINITION = {
     name: "get_chat_space",
+    annotations: { title: "Get Chat space", ...READ_ONLY_ANNOTATIONS },
     description: "Get details of a Google Chat space by resource name ('spaces/AAAAxxxx').",
     inputSchema: {
         type: "object",
@@ -36,6 +42,7 @@ export const GET_CHAT_SPACE_TOOL_DEFINITION = {
 };
 export const FIND_CHAT_DIRECT_MESSAGE_TOOL_DEFINITION = {
     name: "find_chat_direct_message",
+    annotations: { title: "Find Chat direct message", ...READ_ONLY_ANNOTATIONS },
     description: "Find the existing direct message space between the signed-in user and another user. Returns found=false when no DM exists yet.",
     inputSchema: {
         type: "object",
@@ -47,6 +54,7 @@ export const FIND_CHAT_DIRECT_MESSAGE_TOOL_DEFINITION = {
 };
 export const LIST_CHAT_MESSAGES_TOOL_DEFINITION = {
     name: "list_chat_messages",
+    annotations: { title: "List Chat messages", ...READ_ONLY_ANNOTATIONS },
     description: "List messages in a Google Chat space ('spaces/AAAAxxxx'), newest first by default.",
     inputSchema: {
         type: "object",
@@ -70,6 +78,7 @@ export const LIST_CHAT_MESSAGES_TOOL_DEFINITION = {
 };
 export const GET_CHAT_MESSAGE_TOOL_DEFINITION = {
     name: "get_chat_message",
+    annotations: { title: "Get Chat message", ...READ_ONLY_ANNOTATIONS },
     description: "Get a Google Chat message by resource name ('spaces/AAAAxxxx/messages/BBBB').",
     inputSchema: {
         type: "object",
@@ -79,6 +88,7 @@ export const GET_CHAT_MESSAGE_TOOL_DEFINITION = {
 };
 export const SEND_CHAT_MESSAGE_TOOL_DEFINITION = {
     name: "send_chat_message",
+    annotations: { title: "Send Chat message", ...WRITE_ANNOTATIONS },
     description: "Send a text message as the signed-in user to a Google Chat space ('spaces/AAAAxxxx'). Optionally reply in a thread via threadName or threadKey.",
     inputSchema: {
         type: "object",
@@ -97,6 +107,7 @@ export const SEND_CHAT_MESSAGE_TOOL_DEFINITION = {
 };
 export const SEND_CHAT_DIRECT_MESSAGE_TOOL_DEFINITION = {
     name: "send_chat_direct_message",
+    annotations: { title: "Send Chat direct message", ...WRITE_ANNOTATIONS },
     description: "Send a direct message to a user by email. Finds the existing DM space, or creates it (spaces.setup) when it does not exist, then posts the message.",
     inputSchema: {
         type: "object",
@@ -109,6 +120,7 @@ export const SEND_CHAT_DIRECT_MESSAGE_TOOL_DEFINITION = {
 };
 export const UPDATE_CHAT_MESSAGE_TOOL_DEFINITION = {
     name: "update_chat_message",
+    annotations: { title: "Edit Chat message", ...DESTRUCTIVE_ANNOTATIONS, idempotentHint: true },
     description: "Edit the text of a Google Chat message sent by the signed-in user ('spaces/AAA/messages/BBB').",
     inputSchema: {
         type: "object",
@@ -121,6 +133,7 @@ export const UPDATE_CHAT_MESSAGE_TOOL_DEFINITION = {
 };
 export const DELETE_CHAT_MESSAGE_TOOL_DEFINITION = {
     name: "delete_chat_message",
+    annotations: { title: "Delete Chat message", ...DESTRUCTIVE_ANNOTATIONS, idempotentHint: true },
     description: "Delete a Google Chat message sent by the signed-in user ('spaces/AAA/messages/BBB').",
     inputSchema: {
         type: "object",
@@ -130,6 +143,7 @@ export const DELETE_CHAT_MESSAGE_TOOL_DEFINITION = {
 };
 export const LIST_CHAT_MEMBERS_TOOL_DEFINITION = {
     name: "list_chat_members",
+    annotations: { title: "List Chat members", ...READ_ONLY_ANNOTATIONS },
     description: "List members of a Google Chat space ('spaces/AAAAxxxx').",
     inputSchema: {
         type: "object",
@@ -147,6 +161,7 @@ export const LIST_CHAT_MEMBERS_TOOL_DEFINITION = {
 };
 export const ADD_CHAT_REACTION_TOOL_DEFINITION = {
     name: "add_chat_reaction",
+    annotations: { title: "Add Chat reaction", ...WRITE_ANNOTATIONS },
     description: "Add an emoji reaction to a Google Chat message ('spaces/AAA/messages/BBB').",
     inputSchema: {
         type: "object",

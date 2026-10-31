@@ -33,6 +33,25 @@ export const STANDARD_SCOPES = [
     "https://www.googleapis.com/auth/chat.memberships",
     "https://www.googleapis.com/auth/chat.messages.reactions",
 ];
+/**
+ * Scopes each tool owner actually needs. The pre-call gate only checks these,
+ * so a declined or admin-blocked Chat scope does not lock out Drive/Gmail/etc.
+ * Any other gap still surfaces as a 403 from Google, which the registry turns
+ * into a re-auth for that tool only.
+ */
+export const SERVICE_SCOPES = {
+    "google-drive": ["https://www.googleapis.com/auth/drive"],
+    "google-docs": ["https://www.googleapis.com/auth/documents.readonly"],
+    "google-sheets": ["https://www.googleapis.com/auth/spreadsheets"],
+    "google-gmail": ["https://mail.google.com/"],
+    "google-calendar": ["https://www.googleapis.com/auth/calendar"],
+    "google-chat": [
+        "https://www.googleapis.com/auth/chat.spaces",
+        "https://www.googleapis.com/auth/chat.messages",
+        "https://www.googleapis.com/auth/chat.memberships",
+        "https://www.googleapis.com/auth/chat.messages.reactions",
+    ],
+};
 function uniqueValues(values) {
     return Array.from(new Set(values.filter((value) => Boolean(value))));
 }
@@ -210,19 +229,33 @@ function storedUserKeys() {
     catch { }
     return [];
 }
+// Keys owned by this process (active/pinned/default). Used for restore, and the
+// only keys ever deleted on save, purge or MCP_FORCE_CONSENT.
 function legacyCandidateUserKeys() {
     return uniqueUserKeys([
         activeTokenStoreUserKey,
         INITIAL_TOKEN_STORE_USER_KEY,
         "default",
-        ...storedUserKeys(),
     ]);
 }
-export function getMissingScopes(tokenScopeString) {
+// Restore-only fallback: other keys already in the store (e.g. "google-email:<email>")
+// so a fresh process finds re-keyed tokens. Never used for deletion.
+function storedFallbackUserKeys() {
+    const own = new Set(legacyCandidateUserKeys());
+    const others = storedUserKeys().filter((key) => !own.has(key)).sort();
+    if (others.length > 1) {
+        console.error(`[auth] Multiple accounts in the token store (${others.join(", ")}); using ${others[0]}. Set TOKEN_STORE_DEFAULT_USER_KEY to choose one.`);
+    }
+    return others;
+}
+function restoreCandidateUserKeys() {
+    return uniqueUserKeys([...legacyCandidateUserKeys(), ...storedFallbackUserKeys()]);
+}
+export function getMissingScopes(tokenScopeString, requiredScopes = STANDARD_SCOPES) {
     const granted = new Set(typeof tokenScopeString === "string"
         ? tokenScopeString.split(/\s+/).filter((scope) => scope.length > 0)
         : []);
-    return STANDARD_SCOPES.filter((scope) => !granted.has(scope));
+    return requiredScopes.filter((scope) => !granted.has(scope));
 }
 async function saveUserTokens() {
     const targetUserKey = await resolveTokenStoreUserKeyFromCredentials();
@@ -257,10 +290,16 @@ async function saveUserTokens() {
 }
 async function restoreUserTokensFromStore() {
     try {
-        for (const candidateKey of legacyCandidateUserKeys()) {
+        const ownKeys = new Set(legacyCandidateUserKeys());
+        for (const candidateKey of restoreCandidateUserKeys()) {
             const record = await tokenStore.load(candidateKey);
             if (!record) {
                 continue;
+            }
+            if (!ownKeys.has(candidateKey)) {
+                // Adopt the stored identity so re-saving keeps the same key
+                // when the email cannot be resolved (no id_token, offline).
+                activeTokenStoreUserKey = candidateKey;
             }
             oauth2Client.setCredentials(record.tokens);
             const resolvedKey = await resolveTokenStoreUserKeyFromCredentials();
@@ -435,7 +474,10 @@ function listenOnRedirectUri(flow, redirectUri) {
 }
 async function startAuthFlow() {
     if (pendingAuth && !pendingAuth.settled) {
-        return pendingAuth;
+        // Wait until the listener is bound and authUrl is generated.
+        const existing = pendingAuth;
+        await existing.ready;
+        return existing;
     }
     const flow = {
         state: randomBytes(16).toString("hex"),
@@ -450,32 +492,42 @@ async function startAuthFlow() {
     });
     // Avoid unhandled rejections when nobody is waiting on the flow anymore.
     flow.promise.catch(() => { });
-    pendingAuth = flow;
-    for (const redirectUri of oauthConfig.redirectUris) {
-        try {
-            flow.server = await listenOnRedirectUri(flow, redirectUri);
-            flow.redirectUri = redirectUri;
-            break;
-        }
-        catch (error) {
-            if (!isListenError(error)) {
-                pendingAuth = undefined;
-                throw error;
+    flow.ready = (async () => {
+        for (const redirectUri of oauthConfig.redirectUris) {
+            try {
+                flow.server = await listenOnRedirectUri(flow, redirectUri);
+                flow.redirectUri = redirectUri;
+                break;
             }
-            console.error(`[auth] OAuth callback port busy, trying next redirect URI: ${redirectUri}`);
+            catch (error) {
+                if (!isListenError(error)) {
+                    throw error;
+                }
+                console.error(`[auth] OAuth callback port busy, trying next redirect URI: ${redirectUri}`);
+            }
         }
+        if (!flow.server) {
+            console.error(`[auth] No OAuth callback port available; complete sign-in with the complete_google_auth tool (redirect URI ${flow.redirectUri}).`);
+        }
+        flow.authUrl = oauth2Client.generateAuthUrl({
+            access_type: "offline",
+            prompt: "consent",
+            include_granted_scopes: true,
+            redirect_uri: flow.redirectUri,
+            scope: STANDARD_SCOPES,
+            state: flow.state,
+        });
+    })();
+    // Publish synchronously so concurrent callers share this flow, but they
+    // await `ready` before reading authUrl.
+    pendingAuth = flow;
+    try {
+        await flow.ready;
     }
-    if (!flow.server) {
-        console.error(`[auth] No OAuth callback port available; complete sign-in with the complete_google_auth tool (redirect URI ${flow.redirectUri}).`);
+    catch (error) {
+        settlePendingAuth(flow, error);
+        throw error;
     }
-    flow.authUrl = oauth2Client.generateAuthUrl({
-        access_type: "offline",
-        prompt: "consent",
-        include_granted_scopes: true,
-        redirect_uri: flow.redirectUri,
-        scope: STANDARD_SCOPES,
-        state: flow.state,
-    });
     console.error(`[auth] Abra para autenticar / Open to authenticate (${flow.redirectUri}): ${flow.authUrl}`);
     if (!isTruthyEnv(process.env.MCP_NO_BROWSER)) {
         try {
@@ -543,7 +595,13 @@ export async function clearPersonalAuth(purgeDisk = true) {
     }
     oauth2Client.setCredentials({});
 }
-export async function ensurePersonalAuth() {
+/**
+ * Makes sure a usable token is loaded. Only `requiredScopes` (the scopes of the
+ * tool being called) are enforced; gaps in other scopes are just logged so one
+ * declined scope (e.g. Chat blocked by a Workspace admin) does not break the
+ * remaining tools.
+ */
+export async function ensurePersonalAuth(requiredScopes = STANDARD_SCOPES) {
     await applyForceConsentIfRequested();
     if (!(await restoreUserTokensFromStore())) {
         await waitForPersonalAuth("nenhum token salvo / no stored token");
@@ -551,12 +609,18 @@ export async function ensurePersonalAuth() {
     }
     const grantedScope = oauth2Client.credentials.scope;
     if (typeof grantedScope === "string" && grantedScope.trim().length > 0) {
-        const missing = getMissingScopes(grantedScope);
+        const missing = getMissingScopes(grantedScope, requiredScopes);
         if (missing.length > 0) {
-            console.error(`[auth] Stored token is missing required scopes; re-consent needed: ${missing.join(" ")}`);
+            console.error(`[auth] Stored token is missing scopes required by this tool; re-consent needed: ${missing.join(" ")}`);
             oauth2Client.setCredentials({});
-            await waitForPersonalAuth(`token salvo sem escopos necessarios / stored token is missing scopes: ${missing.join(" ")}`);
+            await waitForPersonalAuth(`token salvo sem escopos necessarios para esta ferramenta / stored token is missing scopes for this tool: ${missing.join(" ")}. ` +
+                "Marque todas as permissoes na tela de consentimento; se o administrador do Workspace bloqueou esses escopos, as demais ferramentas continuam funcionando. / " +
+                "Tick every permission on the consent screen; if a Workspace admin blocked these scopes, the other tools keep working.");
             return;
+        }
+        const otherMissing = getMissingScopes(grantedScope);
+        if (otherMissing.length > 0) {
+            console.error(`[auth] Stored token lacks scopes used by other tools (not required for this call): ${otherMissing.join(" ")}`);
         }
     }
     let tokenResponse;
@@ -623,6 +687,14 @@ function parseCompletionInput({ redirectUrl, code }) {
 export async function completePersonalAuth(input = {}) {
     const parsed = parseCompletionInput(input);
     let flow = pendingAuth && !pendingAuth.settled ? pendingAuth : undefined;
+    if (flow) {
+        try {
+            await flow.ready;
+        }
+        catch {
+            flow = undefined;
+        }
+    }
     if (flow && parsed.state && parsed.state !== flow.state) {
         throw new Error("Parametro state nao corresponde ao login pendente; use a URL de login mais recente. / State does not match the pending sign-in; use the latest sign-in URL.");
     }
@@ -648,7 +720,7 @@ export async function completePersonalAuth(input = {}) {
 /** Reports stored token state without calling Google APIs. */
 export async function getPersonalAuthStatus() {
     let record = null;
-    for (const key of legacyCandidateUserKeys()) {
+    for (const key of restoreCandidateUserKeys()) {
         try {
             record = await tokenStore.load(key);
         }
@@ -665,7 +737,15 @@ export async function getPersonalAuthStatus() {
     const email = typeof userKey === "string" && userKey.startsWith("google-email:")
         ? userKey.slice("google-email:".length)
         : null;
-    const flow = pendingAuth && !pendingAuth.settled ? pendingAuth : undefined;
+    let flow = pendingAuth && !pendingAuth.settled ? pendingAuth : undefined;
+    if (flow) {
+        try {
+            await flow.ready;
+        }
+        catch {
+            flow = undefined;
+        }
+    }
     return {
         authenticated: Boolean(record && (record.tokens.refresh_token || record.tokens.access_token)),
         userKey,

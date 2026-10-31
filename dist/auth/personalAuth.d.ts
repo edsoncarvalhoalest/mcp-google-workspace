@@ -1,7 +1,8 @@
 export declare const STANDARD_SCOPES: string[];
 export declare const oauth2Client: import("google-auth-library").OAuth2Client;
 export declare function clearPersonalAuth(purgeDisk?: boolean): Promise<void>;
-export declare function ensurePersonalAuth(): Promise<void>;
+export declare const SERVICE_SCOPES: Record<string, string[]>;
+export declare function ensurePersonalAuth(requiredScopes?: string[]): Promise<void>;
 export declare function forcePersonalReauth(): Promise<void>;
 export declare class AuthRequiredError extends Error {
     authUrl: string;
@@ -24,7 +25,7 @@ export type PersonalAuthStatus = {
         listening: boolean;
     } | null;
 };
-export declare function getMissingScopes(tokenScopeString: string | undefined | null): string[];
+export declare function getMissingScopes(tokenScopeString: string | undefined | null, requiredScopes?: string[]): string[];
 export declare function startPersonalAuth(force?: boolean): Promise<{
     authUrl: string;
     redirectUri: string;

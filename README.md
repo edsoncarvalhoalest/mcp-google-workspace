@@ -10,7 +10,8 @@ Este repositório é um fork do pacote npm [`mcp-google-workspace@0.1.5`](https:
 - **Escopos do Chat** adicionados ao login OAuth: `chat.spaces`, `chat.messages`, `chat.memberships` e `chat.messages.reactions`.
 - **Correções de autenticação**:
   - tokens salvos sob a chave `google-email:<email>` voltam a ser encontrados quando o servidor reinicia (antes o login era pedido de novo a cada reinício);
-  - se o token salvo não tem algum escopo necessário (por exemplo, um token antigo sem os escopos do Chat), o servidor pede um novo consentimento em vez de usar o token incompleto;
+  - se o token salvo não tem algum escopo que a ferramenta chamada precisa (por exemplo, um token antigo sem os escopos do Chat ao usar uma ferramenta do Chat), o servidor pede um novo consentimento em vez de usar o token incompleto. A verificação é feita por ferramenta: se os escopos do Chat forem recusados ou bloqueados pelo administrador do Workspace, Drive, Sheets, Gmail e Calendar continuam funcionando;
+  - salvar, limpar o token ou usar `MCP_FORCE_CONSENT` afeta apenas a conta em uso; outras contas guardadas no mesmo armazenamento de tokens são preservadas;
   - o login não trava mais a chamada da ferramenta esperando um navegador: depois de `MCP_AUTH_WAIT_MS` a ferramenta retorna um erro com a URL de login, e o servidor continua escutando o retorno do Google em segundo plano;
   - ferramentas novas `google_auth_status`, `start_google_auth` e `complete_google_auth` para ver o estado do login e concluí-lo colando a URL de retorno.
 - **Fuso horário configurável** para o Calendar com `MCP_DISPLAY_TIME_ZONE` e `MCP_TIME_ZONE` (o padrão original era `Asia/Ho_Chi_Minh`).
@@ -68,7 +69,7 @@ Para fixar uma versão, use um branch, tag ou commit: `github:edsoncarvalhoalest
 | `GOOGLE_CLIENT_SECRET` | Sim | Secret do cliente OAuth. |
 | `MCP_CONFIG_DIR` | Não | Pasta do armazenamento de tokens. Padrão: `~/.mcp-google-workspace`. |
 | `TOKEN_STORE_DEFAULT_USER_KEY` | Não | Chave do usuário no armazenamento de tokens, por exemplo `google-email:<seu-email>`, para fixar qual conta salva será usada. Alternativa: `MCP_USER_KEY`. Padrão: variável `USER` ou `default`. |
-| `MCP_FORCE_CONSENT` | Não | Com `true`, apaga o token salvo ao iniciar o servidor e força um novo login. Use uma vez e remova depois, senão o login será pedido a cada reinício. |
+| `MCP_FORCE_CONSENT` | Não | Com `true`, apaga o token salvo da conta em uso (chave fixada/ativa) ao iniciar o servidor e força um novo login. Use uma vez e remova depois, senão o login será pedido a cada reinício. |
 | `MCP_NO_BROWSER` | Não | Com `1`/`true`, não tenta abrir o navegador; a URL de login vem apenas na resposta da ferramenta (e no stderr). |
 | `MCP_AUTH_WAIT_MS` | Não | Quanto tempo (ms) a chamada da ferramenta espera o login terminar antes de retornar a URL de login. Padrão: `20000`. |
 | `OAUTH_LOCAL_PORT` | Não | Porta local do retorno OAuth (gera `http://localhost:<porta>/oauth2callback`). Padrão: `3000`, com fallback para `3001` e `3002`. |
@@ -98,6 +99,8 @@ Todas usam autenticação de usuário (agem como a conta logada). Os espaços s�
 
 Os escopos completos têm o prefixo `https://www.googleapis.com/auth/`.
 
+As ferramentas trazem anotações MCP para o cliente (por exemplo, o Kiro) decidir quando pedir confirmação: as de listagem e leitura são `readOnlyHint: true`; `update_chat_message` e `delete_chat_message` são `destructiveHint: true`; `send_chat_message`, `send_chat_direct_message` e `add_chat_reaction` escrevem, mas não destroem nada.
+
 Exemplos de uso no chat do Kiro: "liste meus espaços do Google Chat", "mostre as 10 últimas mensagens do espaço X", "envie uma mensagem direta para fulano@empresa.com dizendo ...".
 
 ### Ferramentas de login
@@ -112,11 +115,11 @@ Exemplos de uso no chat do Kiro: "liste meus espaços do Google Chat", "mostre a
 
 Os tokens salvos antes deste fork não incluem os escopos do Chat. Por isso, depois de atualizar:
 
-1. A primeira chamada de qualquer ferramenta do Google retorna um erro com a **URL de login** (`https://accounts.google.com/...`). Isso é esperado.
+1. A primeira chamada de uma ferramenta do Chat retorna um erro com a **URL de login** (`https://accounts.google.com/...`). Isso é esperado.
 2. Abra a URL no navegador, escolha a conta Workspace e aprove todas as permissões.
 3. O Google redireciona para `http://localhost:3000/oauth2callback?...`. Se o Kiro e o navegador estão na mesma máquina, o servidor recebe o retorno sozinho e salva o token; é só repetir a chamada.
 4. Se o navegador mostrar uma página de erro de `localhost` (por exemplo, o servidor roda em outra máquina ou a porta não está acessível), copie a **URL completa** da barra de endereço e peça ao Kiro para chamar `complete_google_auth` com ela no campo `redirectUrl`.
-5. Confira com `google_auth_status`: `missingScopes` deve estar vazio.
+5. Confira com `google_auth_status`: `missingScopes` deve estar vazio. Se continuar listando escopos do Chat, verifique se todas as caixas foram marcadas na tela de consentimento ou se o administrador do Workspace bloqueou a Chat API; as outras ferramentas funcionam mesmo assim.
 
 Alternativas:
 
