@@ -10,7 +10,8 @@ Este repositório é um fork do pacote npm [`mcp-google-workspace@0.1.5`](https:
 - **Escopos do Chat** adicionados ao login OAuth: `chat.spaces`, `chat.messages`, `chat.memberships` e `chat.messages.reactions`.
 - **Correções de autenticação**:
   - tokens salvos sob a chave `google-email:<email>` voltam a ser encontrados quando o servidor reinicia (antes o login era pedido de novo a cada reinício);
-  - se o token salvo não tem algum escopo que a ferramenta chamada precisa (por exemplo, um token antigo sem os escopos do Chat ao usar uma ferramenta do Chat), o servidor pede um novo consentimento em vez de usar o token incompleto. A verificação é feita por ferramenta: se os escopos do Chat forem recusados ou bloqueados pelo administrador do Workspace, Drive, Sheets, Gmail e Calendar continuam funcionando;
+  - se o token salvo não tem algum escopo que a ferramenta chamada precisa (por exemplo, um token antigo sem os escopos do Chat ao usar uma ferramenta do Chat), o servidor pede um novo consentimento em vez de usar o token incompleto. A verificação é feita por ferramenta: se os escopos do Chat forem recusados ou bloqueados pelo administrador do Workspace, Drive, Sheets, Gmail e Calendar continuam funcionando. No Chat, cada ferramenta exige só o escopo do método que usa (tabela abaixo): recusar `chat.messages.reactions`, por exemplo, bloqueia apenas `add_chat_reaction`;
+  - se `TOKEN_STORE_DEFAULT_USER_KEY` (ou `MCP_USER_KEY`) estiver definida e essa conta não tiver token salvo, o servidor pede login em vez de usar outra conta guardada. Sem essas variáveis, o token salvo (por exemplo `google-email:<email>`) é encontrado normalmente;
   - salvar, limpar o token ou usar `MCP_FORCE_CONSENT` afeta apenas a conta em uso; outras contas guardadas no mesmo armazenamento de tokens são preservadas;
   - o login não trava mais a chamada da ferramenta esperando um navegador: depois de `MCP_AUTH_WAIT_MS` a ferramenta retorna um erro com a URL de login, e o servidor continua escutando o retorno do Google em segundo plano;
   - ferramentas novas `google_auth_status`, `start_google_auth` e `complete_google_auth` para ver o estado do login e concluí-lo colando a URL de retorno.
@@ -68,7 +69,7 @@ Para fixar uma versão, use um branch, tag ou commit: `github:edsoncarvalhoalest
 | `GOOGLE_CLIENT_ID` | Sim | ID do cliente OAuth do Google Cloud. |
 | `GOOGLE_CLIENT_SECRET` | Sim | Secret do cliente OAuth. |
 | `MCP_CONFIG_DIR` | Não | Pasta do armazenamento de tokens. Padrão: `~/.mcp-google-workspace`. |
-| `TOKEN_STORE_DEFAULT_USER_KEY` | Não | Chave do usuário no armazenamento de tokens, por exemplo `google-email:<seu-email>`, para fixar qual conta salva será usada. Alternativa: `MCP_USER_KEY`. Padrão: variável `USER` ou `default`. |
+| `TOKEN_STORE_DEFAULT_USER_KEY` | Não | Chave do usuário no armazenamento de tokens, por exemplo `google-email:<seu-email>`, para fixar qual conta salva será usada. Alternativa: `MCP_USER_KEY`. Com a chave definida, o servidor nunca usa o token de outra conta: se essa chave não estiver salva, pede login. Sem a variável, a chave padrão vem de `USER` (ou `default`) e o servidor usa o token já salvo, mesmo que esteja sob `google-email:<email>`. |
 | `MCP_FORCE_CONSENT` | Não | Com `true`, apaga o token salvo da conta em uso (chave fixada/ativa) ao iniciar o servidor e força um novo login. Use uma vez e remova depois, senão o login será pedido a cada reinício. |
 | `MCP_NO_BROWSER` | Não | Com `1`/`true`, não tenta abrir o navegador; a URL de login vem apenas na resposta da ferramenta (e no stderr). |
 | `MCP_AUTH_WAIT_MS` | Não | Quanto tempo (ms) a chamada da ferramenta espera o login terminar antes de retornar a URL de login. Padrão: `20000`. |
@@ -83,7 +84,9 @@ Fusos inválidos são ignorados e o padrão é usado.
 
 Todas usam autenticação de usuário (agem como a conta logada). Os espaços são identificados por nomes de recurso como `spaces/AAAAxxxx` (o ID sozinho também é aceito) e as mensagens por `spaces/AAAAxxxx/messages/BBBB`.
 
-| Ferramenta | Método da Chat API | Escopo usado |
+Antes de chamar a API, o servidor confere se o token tem o escopo da coluna "Escopo exigido". Se faltar, retorna a URL de login só para essa ferramenta; as demais continuam funcionando.
+
+| Ferramenta | Método da Chat API | Escopo exigido |
 | --- | --- | --- |
 | `list_chat_spaces` | `spaces.list` | `chat.spaces` |
 | `get_chat_space` | `spaces.get` | `chat.spaces` |

@@ -160,22 +160,30 @@ test("a fresh process finds tokens stored under a google-email key (storedUserKe
             },
         }));
         const script = `const m = await import(${JSON.stringify(personalAuthUrl)}); console.log(JSON.stringify(await m.getPersonalAuthStatus()));`;
-        const { stdout } = await execFileAsync(process.execPath, ["--input-type=module", "-e", script], {
-            env: {
-                PATH: process.env.PATH,
-                GOOGLE_CLIENT_ID: "dummy.apps.googleusercontent.com",
-                GOOGLE_CLIENT_SECRET: "dummy",
-                MCP_CONFIG_DIR: freshDir,
-                MCP_NO_BROWSER: "1",
-                TOKEN_STORE_DEFAULT_USER_KEY: "another-user",
-            },
-            cwd: freshDir,
-        });
-        const status = JSON.parse(stdout.trim().split("\n").pop());
+        const runStatus = async (extraEnv) => {
+            const { stdout } = await execFileAsync(process.execPath, ["--input-type=module", "-e", script], {
+                env: {
+                    PATH: process.env.PATH,
+                    GOOGLE_CLIENT_ID: "dummy.apps.googleusercontent.com",
+                    GOOGLE_CLIENT_SECRET: "dummy",
+                    MCP_CONFIG_DIR: freshDir,
+                    MCP_NO_BROWSER: "1",
+                    ...extraEnv,
+                },
+                cwd: freshDir,
+            });
+            return JSON.parse(stdout.trim().split("\n").pop());
+        };
+        // No key configured: the default key comes from USER and does not pin the account.
+        const status = await runStatus({ USER: "another-user" });
         assert.equal(status.authenticated, true);
         assert.equal(status.email, "someone@example.com");
         assert.ok(status.missingScopes.length > 0, "drive-only token should report missing scopes");
         assert.ok(!status.missingScopes.includes("https://www.googleapis.com/auth/drive"));
+        // An explicitly pinned, absent key must not fall back to another account.
+        const pinned = await runStatus({ TOKEN_STORE_DEFAULT_USER_KEY: "google-email:other@example.com" });
+        assert.equal(pinned.authenticated, false);
+        assert.equal(pinned.userKey, null);
     }
     finally {
         fs.rmSync(freshDir, { recursive: true, force: true });

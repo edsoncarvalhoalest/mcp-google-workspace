@@ -134,6 +134,68 @@ test("a token without Chat scopes still serves non-Chat tools but re-consents fo
     assert.ok(readStore()[USER_A], "re-consent must not delete the stored token");
 });
 
+test("a Chat scope-gate failure does not clear credentials of a concurrent non-Chat call", async () => {
+    const nonChat = auth.STANDARD_SCOPES.filter((scope) => !scope.includes("/auth/chat.")).join(" ");
+    writeStore({ [USER_A]: nonChat });
+    let chatCalls = 0;
+    chatHelpers.setChatClientFactory(() => {
+        chatCalls += 1;
+        return {};
+    });
+    // Simulates a Drive request that reads the shared client after an await.
+    const driveInFlight = (async () => {
+        await auth.ensurePersonalAuth(auth.SERVICE_SCOPES["google-drive"]);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return { ...auth.oauth2Client.credentials };
+    })();
+    const [driveCredentials, chatResult] = await Promise.all([
+        driveInFlight,
+        registry.routeToolCall("list_chat_spaces", {}),
+    ]);
+    assert.equal(driveCredentials.access_token, `access-${USER_A}`, "Drive must keep its credentials");
+    assert.equal(chatResult.isError, true);
+    assert.match(textOf(chatResult), /accounts\.google\.com/);
+    assert.equal(chatCalls, 0);
+    assert.equal(auth.oauth2Client.credentials.access_token, `access-${USER_A}`);
+    chatHelpers.resetChatClientFactory();
+});
+
+test("Chat tools are gated per method scope, so a declined reactions scope only blocks reactions", async () => {
+    const { CHAT_TOOL_MODULES, CHAT_SCOPES } = await importDist("mcp/tools/google/chat/index.js");
+    const byName = Object.fromEntries(CHAT_TOOL_MODULES.map((module) => [module.definition.name, registry.resolveRequiredScopes(module)]));
+    assert.deepEqual(byName.list_chat_spaces, [CHAT_SCOPES.spaces]);
+    assert.deepEqual(byName.get_chat_space, [CHAT_SCOPES.spaces]);
+    assert.deepEqual(byName.find_chat_direct_message, [CHAT_SCOPES.spaces]);
+    for (const name of ["list_chat_messages", "get_chat_message", "send_chat_message", "update_chat_message", "delete_chat_message"]) {
+        assert.deepEqual(byName[name], [CHAT_SCOPES.messages], name);
+    }
+    assert.deepEqual(byName.send_chat_direct_message, [CHAT_SCOPES.spaces, CHAT_SCOPES.messages]);
+    assert.deepEqual(byName.list_chat_members, [CHAT_SCOPES.memberships]);
+    assert.deepEqual(byName.add_chat_reaction, [CHAT_SCOPES.reactions]);
+    for (const scopes of Object.values(byName)) {
+        for (const scope of scopes) {
+            assert.ok(auth.STANDARD_SCOPES.includes(scope), `${scope} must be requested at consent`);
+        }
+    }
+
+    writeStore({ [USER_A]: auth.STANDARD_SCOPES.filter((scope) => scope !== CHAT_SCOPES.reactions).join(" ") });
+    let reactionCalls = 0;
+    chatHelpers.setChatClientFactory(() => ({
+        spaces: {
+            list: async () => ({ data: { spaces: [{ name: "spaces/AAA", displayName: "Team" }] } }),
+            messages: { reactions: { create: async () => { reactionCalls += 1; return { data: {} }; } } },
+        },
+    }));
+    const spaces = await registry.routeToolCall("list_chat_spaces", {});
+    assert.notEqual(spaces.isError, true, textOf(spaces));
+    assert.match(textOf(spaces), /spaces\/AAA/);
+    const reaction = await registry.routeToolCall("add_chat_reaction", { name: "spaces/AAA/messages/BBB", emoji: "👍" });
+    assert.equal(reaction.isError, true);
+    assert.match(textOf(reaction), /chat\.messages\.reactions/);
+    assert.equal(reactionCalls, 0);
+    chatHelpers.resetChatClientFactory();
+});
+
 test("insufficient-scope 403 from a tool triggers re-auth and returns the sign-in URL", async () => {
     writeStore({ [USER_A]: auth.STANDARD_SCOPES.join(" ") });
     let calls = 0;
@@ -168,11 +230,18 @@ test("saving or purging one account leaves other accounts in the store", async (
     assert.ok(store[USER_B], "other account must survive a purge");
 });
 
-test("a fresh restore falls back to a stored account without deleting it", async () => {
-    // Only B remains; the pinned key (A) is absent, so B is the restore fallback.
+test("an explicitly pinned account that is missing starts sign-in instead of using another account", async () => {
+    // Only B remains; A is pinned via TOKEN_STORE_DEFAULT_USER_KEY.
     userinfoEmail = "b@example.com";
-    await auth.ensurePersonalAuth(auth.SERVICE_SCOPES["google-drive"]);
-    const store = readStore();
-    assert.ok(store[USER_B], "fallback account is kept under its own key");
-    assert.deepEqual(Object.keys(store), [USER_B]);
+    auth.oauth2Client.setCredentials({});
+    await assert.rejects(auth.ensurePersonalAuth(auth.SERVICE_SCOPES["google-drive"]), (error) => {
+        assert.equal(error.name, "AuthRequiredError");
+        assert.match(error.message, /accounts\.google\.com/);
+        return true;
+    });
+    assert.equal(auth.oauth2Client.credentials.access_token, undefined, "B's token must not be loaded");
+    const status = await auth.getPersonalAuthStatus();
+    assert.equal(status.authenticated, false);
+    assert.equal(status.userKey, null);
+    assert.deepEqual(Object.keys(readStore()), [USER_B], "B stays stored untouched");
 });

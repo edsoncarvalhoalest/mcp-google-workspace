@@ -19,6 +19,11 @@ const DEFAULT_REDIRECT_URIS = [
     "http://localhost:3002/oauth2callback",
 ];
 const INITIAL_TOKEN_STORE_USER_KEY = resolveDefaultUserKey();
+// An explicitly configured key pins the account: never fall back to another
+// stored identity (Chat tools would act as that account). A key derived from
+// USER/"default" is not a pin, so re-keyed "google-email:<email>" tokens are found.
+const USER_KEY_EXPLICITLY_PINNED = [process.env.TOKEN_STORE_DEFAULT_USER_KEY, process.env.MCP_USER_KEY]
+    .some((value) => typeof value === "string" && value.trim().length > 0);
 let activeTokenStoreUserKey = INITIAL_TOKEN_STORE_USER_KEY;
 export const STANDARD_SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -241,6 +246,9 @@ function legacyCandidateUserKeys() {
 // Restore-only fallback: other keys already in the store (e.g. "google-email:<email>")
 // so a fresh process finds re-keyed tokens. Never used for deletion.
 function storedFallbackUserKeys() {
+    if (USER_KEY_EXPLICITLY_PINNED) {
+        return [];
+    }
     const own = new Set(legacyCandidateUserKeys());
     const others = storedUserKeys().filter((key) => !own.has(key)).sort();
     if (others.length > 1) {
@@ -612,7 +620,8 @@ export async function ensurePersonalAuth(requiredScopes = STANDARD_SCOPES) {
         const missing = getMissingScopes(grantedScope, requiredScopes);
         if (missing.length > 0) {
             console.error(`[auth] Stored token is missing scopes required by this tool; re-consent needed: ${missing.join(" ")}`);
-            oauth2Client.setCredentials({});
+            // Keep the shared client's credentials: the token is still valid for
+            // other tools that may be mid-request; sign-in replaces them anyway.
             await waitForPersonalAuth(`token salvo sem escopos necessarios para esta ferramenta / stored token is missing scopes for this tool: ${missing.join(" ")}. ` +
                 "Marque todas as permissoes na tela de consentimento; se o administrador do Workspace bloqueou esses escopos, as demais ferramentas continuam funcionando. / " +
                 "Tick every permission on the consent screen; if a Workspace admin blocked these scopes, the other tools keep working.");
