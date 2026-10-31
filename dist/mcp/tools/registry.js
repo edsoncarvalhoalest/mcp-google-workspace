@@ -1,4 +1,5 @@
 import { ensurePersonalAuth, forcePersonalReauth } from "../../auth/personalAuth.js";
+import { AUTH_TOOL_MODULES } from "./google/auth/index.js";
 import { CALENDAR_TOOL_MODULES } from "./google/calendar/index.js";
 import { DRIVE_TOOL_MODULES } from "./google/drive/index.js";
 import { GMAIL_TOOL_MODULES } from "./google/gmail/index.js";
@@ -20,6 +21,7 @@ function isAuthErrorText(text) {
     return AUTH_ERROR_MARKERS.some((marker) => normalized.includes(marker));
 }
 const ALL_TOOL_MODULES = [
+    ...AUTH_TOOL_MODULES,
     ...DRIVE_TOOL_MODULES,
     ...SHEETS_TOOL_MODULES,
     ...GMAIL_TOOL_MODULES,
@@ -54,7 +56,9 @@ export async function routeToolCall(name, args) {
         if (!toolModule) {
             return errorResult(`Tool '${name}' is not supported by this local MCP server.`);
         }
-        return executeToolModule(toolModule, args);
+        // Await so auth failures (e.g. AuthRequiredError with the sign-in URL)
+        // become a tool error result instead of a rejected request.
+        return await executeToolModule(toolModule, args);
     }
     catch (error) {
         return errorResult(error);

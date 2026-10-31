@@ -3,7 +3,31 @@ import { oauth2Client } from "../../../../auth/personalAuth.js";
 export function getCalendarClient() {
     return google.calendar({ version: "v3", auth: oauth2Client });
 }
-export const DISPLAY_TIME_ZONE = "Asia/Ho_Chi_Minh";
+function isValidTimeZone(timeZone) {
+    try {
+        new Intl.DateTimeFormat("en-US", { timeZone });
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+// Returns the first candidate that is a valid IANA time zone, else the fallback.
+export function resolveTimeZoneSetting(candidates, fallback) {
+    for (const candidate of candidates) {
+        if (typeof candidate !== "string" || candidate.trim().length === 0) {
+            continue;
+        }
+        const trimmed = candidate.trim();
+        if (isValidTimeZone(trimmed)) {
+            return trimmed;
+        }
+        console.error(`[calendar] Ignoring invalid time zone '${trimmed}', using fallback.`);
+    }
+    return fallback;
+}
+// Configurable via MCP_DISPLAY_TIME_ZONE or MCP_TIME_ZONE (original default kept).
+export const DISPLAY_TIME_ZONE = resolveTimeZoneSetting([process.env.MCP_DISPLAY_TIME_ZONE, process.env.MCP_TIME_ZONE], "Asia/Ho_Chi_Minh");
 // Renders an ISO/RFC3339 datetime (or all-day date) as wall-clock time in the
 // display time zone, e.g. "2026-05-31 07:30 (Asia/Ho_Chi_Minh)". This lets the
 // agent report times directly without doing its own (often wrong) UTC math.

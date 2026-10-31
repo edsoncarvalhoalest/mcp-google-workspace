@@ -1,6 +1,7 @@
 import type { calendar_v3 } from "googleapis";
 export declare function getCalendarClient(): calendar_v3.Calendar;
-export declare const DISPLAY_TIME_ZONE = "Asia/Ho_Chi_Minh";
+export declare function resolveTimeZoneSetting(candidates: Array<string | undefined>, fallback: string): string;
+export declare const DISPLAY_TIME_ZONE: string;
 export type CalendarEventSummary = {
     id: string;
     etag: string;
