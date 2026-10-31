@@ -1,0 +1,12 @@
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+export declare const LIST_CHAT_SPACES_TOOL_DEFINITION: Tool;
+export declare const GET_CHAT_SPACE_TOOL_DEFINITION: Tool;
+export declare const FIND_CHAT_DIRECT_MESSAGE_TOOL_DEFINITION: Tool;
+export declare const LIST_CHAT_MESSAGES_TOOL_DEFINITION: Tool;
+export declare const GET_CHAT_MESSAGE_TOOL_DEFINITION: Tool;
+export declare const SEND_CHAT_MESSAGE_TOOL_DEFINITION: Tool;
+export declare const SEND_CHAT_DIRECT_MESSAGE_TOOL_DEFINITION: Tool;
+export declare const UPDATE_CHAT_MESSAGE_TOOL_DEFINITION: Tool;
+export declare const DELETE_CHAT_MESSAGE_TOOL_DEFINITION: Tool;
+export declare const LIST_CHAT_MEMBERS_TOOL_DEFINITION: Tool;
+export declare const ADD_CHAT_REACTION_TOOL_DEFINITION: Tool;

@@ -1,5 +1,7 @@
-import { ensurePersonalAuth, forcePersonalReauth } from "../../auth/personalAuth.js";
+import { ensurePersonalAuth, forcePersonalReauth, SERVICE_SCOPES, STANDARD_SCOPES } from "../../auth/personalAuth.js";
+import { AUTH_TOOL_MODULES } from "./google/auth/index.js";
 import { CALENDAR_TOOL_MODULES } from "./google/calendar/index.js";
+import { CHAT_TOOL_MODULES } from "./google/chat/index.js";
 import { DRIVE_TOOL_MODULES } from "./google/drive/index.js";
 import { GMAIL_TOOL_MODULES } from "./google/gmail/index.js";
 import { SHEETS_TOOL_MODULES } from "./google/sheets/index.js";
@@ -20,10 +22,12 @@ function isAuthErrorText(text) {
     return AUTH_ERROR_MARKERS.some((marker) => normalized.includes(marker));
 }
 const ALL_TOOL_MODULES = [
+    ...AUTH_TOOL_MODULES,
     ...DRIVE_TOOL_MODULES,
     ...SHEETS_TOOL_MODULES,
     ...GMAIL_TOOL_MODULES,
     ...CALENDAR_TOOL_MODULES,
+    ...CHAT_TOOL_MODULES,
 ];
 const TOOL_MODULE_MAP = new Map();
 for (const toolModule of ALL_TOOL_MODULES) {
@@ -35,12 +39,16 @@ for (const toolModule of ALL_TOOL_MODULES) {
 }
 export const REGISTERED_TOOL_DEFINITIONS = ALL_TOOL_MODULES.map((toolModule) => toolModule.definition);
 export const REGISTERED_TOOL_NAMES = new Set(TOOL_MODULE_MAP.keys());
+/** Scopes checked before a personal tool runs: per-module override, else per owner. */
+export function resolveRequiredScopes(toolModule) {
+    return toolModule.requiredScopes ?? SERVICE_SCOPES[toolModule.owner] ?? STANDARD_SCOPES;
+}
 async function executeToolModule(toolModule, args) {
     const authMode = toolModule.authMode ?? "personal";
     if (authMode === "none") {
         return toolModule.handler(args);
     }
-    await ensurePersonalAuth();
+    await ensurePersonalAuth(resolveRequiredScopes(toolModule));
     let result = await toolModule.handler(args);
     if (result.isError && isAuthErrorText(extractText(result))) {
         await forcePersonalReauth();
@@ -54,7 +62,9 @@ export async function routeToolCall(name, args) {
         if (!toolModule) {
             return errorResult(`Tool '${name}' is not supported by this local MCP server.`);
         }
-        return executeToolModule(toolModule, args);
+        // Await so auth failures (e.g. AuthRequiredError with the sign-in URL)
+        // become a tool error result instead of a rejected request.
+        return await executeToolModule(toolModule, args);
     }
     catch (error) {
         return errorResult(error);

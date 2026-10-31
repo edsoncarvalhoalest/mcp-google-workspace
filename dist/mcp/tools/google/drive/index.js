@@ -42,5 +42,9 @@ export const DRIVE_TOOL_MODULES = [
         authMode: "personal",
         definition: READ_DOCUMENT_CONTENT_TOOL_DEFINITION,
         handler: handleReadDocumentContent,
+        requiredScopes: [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/documents.readonly",
+        ],
     },
 ];

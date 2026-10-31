@@ -1,8 +1,8 @@
 {
   "name": "mcp-google-workspace",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "type": "module",
-  "description": "MCP server for Google Workspace (Drive, Sheets, Gmail, Calendar).",
+  "description": "MCP server for Google Workspace (Drive, Sheets, Gmail, Calendar, Chat).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,32 +14,13 @@
     "README.md"
   ],
   "scripts": {
-    "test": "npm run test:sheets && npm run test:calendar",
-    "test:sheets": "npx tsc && node --test dist/mcp/tools/google/sheets/tests/*.test.js",
-    "test:calendar": "npx tsc && node --experimental-test-module-mocks --test dist/mcp/tools/google/calendar/tests/*.test.js",
-    "benchmark:sheets": "node scripts/benchmark/sheets/run-model-matrix.mjs",
-    "benchmark:sheets:v1": "node scripts/benchmark/sheets/run_benchmark.mjs",
-    "benchmark:sheets:audit": "node scripts/benchmark/sheets/audit-sheet-model-calls.mjs",
-    "firestore:schema": "node scripts/firestore/bootstrap-schema.mjs",
-    "firestore:schema:dry": "node scripts/firestore/bootstrap-schema.mjs --dry-run",
-    "firestore:deploy": "node scripts/firestore/deploy-config.mjs",
-    "clean": "rm -rf dist dist-tests",
-    "build": "npm run clean && tsc",
-    "build:tests": "npm run clean && tsc -p tsconfig.tests.json",
-    "release:check": "npm run build && npm run test:sheets && npm run pack:check",
-    "prepack": "npm run build",
-    "pack:check": "npm pack --dry-run",
-    "release:public": "npm publish --access public",
-    "gmail:webhook": "node dist/webhooks/gmail.js",
-    "tools:list": "node agent/simple-agent.mjs --listTools true",
-    "agent:interactive": "node agent/simple-agent.mjs --interactive true",
-    "agent:debug": "node agent/simple-agent.mjs --interactive true --debug true",
-    "build-and-list": "npm run build && npm run tools:list",
-    "start": "node dist/cli.js"
+    "test": "node --test \"test/*.test.mjs\"",
+    "start": "node dist/cli.js",
+    "gmail:webhook": "node dist/webhooks/gmail.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VSF-TTS/AI-Platform-A.git"
+    "url": "git+https://github.com/edsoncarvalhoalest/mcp-google-workspace.git"
   },
   "keywords": [
     "mcp",
@@ -48,7 +29,8 @@
     "google-drive",
     "google-sheets",
     "google-calendar",
-    "gmail"
+    "gmail",
+    "google-chat"
   ],
   "author": "",
   "license": "ISC",
@@ -59,18 +41,9 @@
     "access": "public"
   },
   "bugs": {
-    "url": "https://github.com/VSF-TTS/AI-Platform-A/issues"
+    "url": "https://github.com/edsoncarvalhoalest/mcp-google-workspace/issues"
   },
-  "homepage": "https://github.com/VSF-TTS/AI-Platform-A#readme",
-  "devDependencies": {
-    "@langchain/core": "^1.1.48",
-    "@langchain/langgraph": "^1.2.6",
-    "@langchain/openai": "^1.4.7",
-    "@types/express": "^5.0.6",
-    "@types/node": "^25.9.1",
-    "@types/open": "^6.1.0",
-    "typescript": "^6.0.3"
-  },
+  "homepage": "https://github.com/edsoncarvalhoalest/mcp-google-workspace#readme",
   "dependencies": {
     "@google-cloud/firestore": "^8.6.0",
     "@modelcontextprotocol/sdk": "^1.29.0",

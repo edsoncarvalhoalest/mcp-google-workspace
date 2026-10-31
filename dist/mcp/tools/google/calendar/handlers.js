@@ -1,6 +1,6 @@
 import { errorResult, jsonResult } from "../../result.js";
 import { getOptionalPositiveNumber, getRequiredString } from "../../shared/args.js";
-import { getCalendarClient, getHttpStatus, ifMatchHeaders, ifNoneMatchHeaders, mapCalendarEvent, mapCalendarListEntry, } from "./helpers.js";
+import { getCalendarClient, getHttpStatus, ifMatchHeaders, ifNoneMatchHeaders, mapCalendarEvent, mapCalendarListEntry, resolveTimeZoneSetting, } from "./helpers.js";
 function getCalendarId(args) {
     const value = args?.calendarId;
     if (value === undefined || value === null) {
@@ -33,7 +33,8 @@ function getOptionalStringField(args, key) {
     return trimmed.length > 0 ? trimmed : undefined;
 }
 function getTimeZone(args) {
-    return getOptionalStringField(args, "timeZone") ?? "UTC";
+    return (getOptionalStringField(args, "timeZone") ??
+        resolveTimeZoneSetting([process.env.MCP_TIME_ZONE, process.env.MCP_DISPLAY_TIME_ZONE], "UTC"));
 }
 function buildDateTimeField(dateTime, timeZone) {
     return { dateTime, timeZone };
